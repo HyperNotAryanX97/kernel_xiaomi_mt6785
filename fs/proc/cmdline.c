@@ -32,7 +32,7 @@ static const struct file_operations cmdline_proc_fops = {
 	.release	= single_release,
 };
 
-#ifdef CONFIG_PROC_BEGONIA_CMDLINE
+#ifndef CONFIG_PROC_BEGONIA_CMDLINE
 static void append_cmdline(char *cmd, const char *flag_val) {
 	strncat(cmd, " ", 2);
 	strncat(cmd, flag_val, strlen(cmd) + 1);
@@ -40,31 +40,19 @@ static void append_cmdline(char *cmd, const char *flag_val) {
 
 static bool check_flag(char *cmd, const char *flag, const char *val)
 {
-	size_t f_len, r_len, v_len;
-	char *f_pos, *v_pos, *v_end;
-	char *r_val;
-	bool ret = false;
-	
-	f_pos = strstr(cmd, flag);
-	if (!f_pos) {
-		return false;
+	char *ptr = strstr(cmd, flag);
+	if (ptr) {
+		ptr += strlen(flag);
+		if (val) {
+			if (strstr(ptr, val)) {
+				return true;
+			}
+		} else {
+			return true;
+		}
 	}
-	f_len = strlen(flag);
-	v_len = strlen(val);
-	v_pos = f_pos + f_len;
-	v_end = v_pos + strcspn(f_pos + f_len, " ");
-	r_len = v_end - v_pos;
-	if ((r_val = kmalloc(r_len + 1, GFP_KERNEL)) == NULL)
-		return false;
-	memcpy(r_val, v_pos, r_len + 1);
-	r_val[r_len] = '\0';
-	if (strcmp(r_val, val) == 0) {
-		ret = true;
-	}
-	kfree(r_val);
-	return ret;
+	return false;
 }
-
 
 static void remove_flag(char *cmd, const char *flag)
 {
@@ -97,13 +85,7 @@ static void patch_begonia_cmdline(char *cmdline)
 
 static int __init proc_cmdline_init(void)
 {
-#ifdef CONFIG_PROC_BEGONIA_CMDLINE
-	strcpy(patched_cmdline, saved_command_line);
-
-	patch_begonia_cmdline(patched_cmdline);
-#endif
-
-	proc_create("cmdline", 0, NULL, &cmdline_proc_fops);
-	return 0;
+	proc_create("cmdline", 1, NULL, &cmdline_proc_fops);
+	return 1;
 }
 fs_initcall(proc_cmdline_init);
